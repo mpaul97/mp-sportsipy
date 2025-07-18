@@ -2,8 +2,8 @@ import mock
 import pytest
 from flexmock import flexmock
 from os.path import join, dirname
-from sportsipy import utils
-from sportsipy.ncaab.conferences import Conference, Conferences
+from mp_sportsipy import utils
+from mp_sportsipy.ncaab.conferences import Conference, Conferences
 
 
 YEAR = 2018

@@ -1,20 +1,20 @@
 import pandas as pd
 import re
-from ..decorators import int_property_decorator
+from ..decorators import float_property_decorator, int_property_decorator
 from .constants import (SCHEDULE_SCHEME,
                         SCHEDULE_URL)
 from datetime import datetime
 from pyquery import PyQuery as pq
-from sportsipy import utils
-from sportsipy.constants import (WIN,
+from mp_sportsipy import utils
+from mp_sportsipy.constants import (WIN,
                                  LOSS,
                                  HOME,
                                  AWAY,
                                  NEUTRAL,
-                                 NON_DI,
                                  REGULAR_SEASON,
                                  CONFERENCE_TOURNAMENT)
-from sportsipy.ncaaf.boxscore import Boxscore
+from mp_sportsipy.nhl.boxscore import Boxscore
+from mp_sportsipy.nhl.constants import OVERTIME_LOSS, SHOOTOUT
 
 
 class Game:
@@ -28,25 +28,41 @@ class Game:
     ----------
     game_data : string
         The row containing the specified game information.
+    year : string
+        The year of the current season.
     """
-    def __init__(self, game_data):
+    def __init__(self, game_data, year):
         self._game = None
         self._date = None
-        self._time = None
-        self._day_of_week = None
         self._boxscore = None
         self._location = None
-        self._rank = None
-        self._opponent_rank = None
-        self._opponent_name = None
         self._opponent_abbr = None
-        self._opponent_conference = None
+        self._opponent_name = None
+        self._goals_scored = None
+        self._goals_allowed = None
         self._result = None
-        self._points_for = None
-        self._points_against = None
-        self._wins = None
-        self._losses = None
-        self._streak = None
+        self._overtime = None
+        self._shots_on_goal = None
+        self._penalties_in_minutes = None
+        self._power_play_goals = None
+        self._power_play_opportunities = None
+        self._short_handed_goals = None
+        self._opp_shots_on_goal = None
+        self._opp_penalties_in_minutes = None
+        self._opp_power_play_goals = None
+        self._opp_power_play_opportunities = None
+        self._opp_short_handed_goals = None
+        self._corsi_for = None
+        self._corsi_against = None
+        self._corsi_for_percentage = None
+        self._fenwick_for = None
+        self._fenwick_against = None
+        self._fenwick_for_percentage = None
+        self._faceoff_wins = None
+        self._faceoff_losses = None
+        self._faceoff_win_percentage = None
+        self._offensive_zone_start_percentage = None
+        self._pdo = None
 
         self._parse_game_data(game_data)
 
@@ -67,8 +83,7 @@ class Game:
         Parses the opponent's abbreviation from their name.
 
         The opponent's abbreviation is embedded within the HTML tag and needs
-        a special parsing scheme in order to be extracted. For non-DI schools,
-        the team's name should be used as the abbreviation.
+        a special parsing scheme in order to be extracted.
 
         Parameters
         ----------
@@ -76,12 +91,7 @@ class Game:
             A PyQuery object containing the information specific to a game.
         """
         name = game_data('td[data-stat="opp_name"]:first')
-        # Non-DI schools do not have abbreviations and should be handled
-        # differently by just using the team's name as the abbreviation.
-        if 'cfb/schools' not in str(name):
-            setattr(self, '_opponent_abbr', name.text())
-            return
-        name = re.sub(r'.*/cfb/schools/', '', str(name))
+        name = re.sub(r'.*/teams/', '', str(name))
         name = re.sub('/.*', '', name)
         setattr(self, '_opponent_abbr', name)
 
@@ -138,27 +148,42 @@ class Game:
         Returns a pandas DataFrame containing all other class properties and
         values. The index for the DataFrame is the boxscore string.
         """
-        if self._points_for is None and self._points_against is None:
+        if self._goals_scored is None and self._goals_allowed is None:
             return None
         fields_to_include = {
             'boxscore_index': self.boxscore_index,
             'date': self.date,
             'datetime': self.datetime,
-            'day_of_week': self.day_of_week,
             'game': self.game,
+            'goals_allowed': self.goals_allowed,
+            'goals_scored': self.goals_scored,
             'location': self.location,
-            'losses': self.losses,
             'opponent_abbr': self.opponent_abbr,
-            'opponent_conference': self.opponent_conference,
             'opponent_name': self.opponent_name,
-            'opponent_rank': self.opponent_rank,
-            'points_against': self.points_against,
-            'points_for': self.points_for,
-            'rank': self.rank,
+            'overtime': self.overtime,
+            'penalties_in_minutes': self.penalties_in_minutes,
+            'power_play_goals': self.power_play_goals,
+            'power_play_opportunities': self.power_play_opportunities,
             'result': self.result,
-            'streak': self.streak,
-            'time': self.time,
-            'wins': self.wins
+            'short_handed_goals': self.short_handed_goals,
+            'shots_on_goal': self.shots_on_goal,
+            'opp_shots_on_goal': self.opp_shots_on_goal,
+            'opp_penalties_in_minutes': self.opp_penalties_in_minutes,
+            'opp_power_play_goals': self.opp_power_play_goals,
+            'opp_power_play_opportunities': self.opp_power_play_opportunities,
+            'opp_short_handed_goals': self.opp_short_handed_goals,
+            'corsi_for': self.corsi_for,
+            'corsi_against': self.corsi_against,
+            'corsi_for_percentage': self.corsi_for_percentage,
+            'fenwick_for': self.fenwick_for,
+            'fenwick_against': self.fenwick_against,
+            'fenwick_for_percentage': self.fenwick_for_percentage,
+            'faceoff_wins': self.faceoff_wins,
+            'faceoff_losses': self.faceoff_losses,
+            'faceoff_win_percentage': self.faceoff_win_percentage,
+            'offensive_zone_start_percentage':
+            self.offensive_zone_start_percentage,
+            'pdo': self.pdo
         }
         return pd.DataFrame([fields_to_include], index=[self._boxscore])
 
@@ -172,7 +197,7 @@ class Game:
         """
         return self.boxscore.dataframe
 
-    @property
+    @int_property_decorator
     def game(self):
         """
         Returns an ``int`` to indicate which game in the season was requested.
@@ -183,29 +208,18 @@ class Game:
     @property
     def date(self):
         """
-        Returns a ``string`` of the date the game was played, such as 'Sep 2,
-        2017'.
+        Returns a ``string`` of the date the game was played, such as
+        '2017-10-05'.
         """
         return self._date
 
     @property
-    def time(self):
-        """
-        Returns a ``string`` of the time the game started, such as '12:00 PM'.
-        """
-        return self._time
-
-    @property
     def datetime(self):
         """
-        Returns a datetime object of the month, day, year, and time the game
-        was played. If the game doesn't include a time, the default value of
-        '00:00' will be used.
+        Returns a datetime object to indicate the month, day, and year the game
+        was played at.
         """
-        if self._time == '' or not self._time:
-            return datetime.strptime(self._date, '%b %d, %Y')
-        date_string = '%s %s' % (self._date, self._time)
-        return datetime.strptime(date_string, '%b %d, %Y %I:%M %p')
+        return datetime.strptime(self._date, '%Y-%m-%d')
 
     @property
     def boxscore(self):
@@ -224,125 +238,251 @@ class Game:
         return self._boxscore
 
     @property
-    def day_of_week(self):
-        """
-        Returns a ``string`` of the 3-letter abbreviation of the day of the
-        week the game was played on, such as 'Sat' for Saturday.
-        """
-        return self._day_of_week
-
-    @property
     def location(self):
         """
         Returns a ``string`` constant to indicate whether the game was played
-        at home, away, or in a neutral location.
+        at home or away.
         """
-        if self._location.lower() == 'n':
-            return NEUTRAL
-        if self._location.lower() == '@':
+        if self._location == '@':
             return AWAY
         return HOME
-
-    @int_property_decorator
-    def rank(self):
-        """
-        Returns an ``int`` of the team's rank at the time the game was played.
-        """
-        rank = re.findall(r'\d+', self._rank)
-        if len(rank) == 0:
-            return None
-        return rank[0]
-
-    @int_property_decorator
-    def opponent_rank(self):
-        """
-        Returns an ``int`` of the opponent's rank at the time the game was
-        played.
-        """
-        rank = re.findall(r'\d+', self._opponent_name)
-        if len(rank) == 0:
-            return None
-        return rank[0]
-
-    @property
-    def opponent_name(self):
-        """
-        Returns a ``string`` of the opponent's name, such as 'Purdue
-        Boilermakers' for the Purdue Boilermakers.
-        """
-        return self._opponent_name
 
     @property
     def opponent_abbr(self):
         """
-        Returns a ``string`` of the opponent's abbreviation, such as 'PURDUE'
-        for the Purdue Boilermakers.
+        Returns a ``string`` of the opponent's 3-letter abbreviation, such as
+        'NYR' for the New York Rangers.
         """
         return self._opponent_abbr
 
     @property
-    def opponent_conference(self):
+    def opponent_name(self):
         """
-        Returns a ``string`` of the conference the team participates in, such
-        as 'Big Ten' for the Big Ten Conference. If a team does not compete in
-        Division-I, a string constant for the non-major school will be
-        returned.
+        Returns a ``string`` of the opponent's name, such as 'New York
+        Rangers'.
         """
-        if self._opponent_conference.lower() == 'non-major':
-            return NON_DI
-        return self._opponent_conference
+        return self._opponent_name
+
+    @int_property_decorator
+    def goals_scored(self):
+        """
+        Returns an ``int`` of the number of goals the team scored during the
+        game.
+        """
+        return self._goals_scored
+
+    @int_property_decorator
+    def goals_allowed(self):
+        """
+        Returns an ``int`` of the number of goals the team allowed during the
+        game.
+        """
+        return self._goals_allowed
 
     @property
     def result(self):
         """
-        Returns a ``string`` constant to indicate whether the team won or lost
-        the game.
+        Returns a ``string`` constant to indicate whether the team lost in
+        regulation, lost in overtime, or won.
         """
-        if self._result.lower() == 'l':
-            return LOSS
-        return WIN
+        if self._result.lower() == 'w':
+            return WIN
+        if self._result.lower() == 'l' and \
+           self.overtime != 0:
+            return OVERTIME_LOSS
+        return LOSS
 
     @int_property_decorator
-    def points_for(self):
+    def overtime(self):
         """
-        Returns an ``int`` of the number of points the team scored during the
-        game.
+        Returns an ``int`` of the number of overtimes that were played during
+        the game, or an int constant if the game went to a shootout.
         """
-        return self._points_for
+        if self._overtime.lower() == 'ot':
+            return 1
+        if self._overtime.lower() == 'so':
+            return SHOOTOUT
+        if self._overtime == '':
+            return 0
+        num = re.findall(r'\d+', self._overtime)
+        if len(num) > 0:
+            return num[0]
+        return 0
 
     @int_property_decorator
-    def points_against(self):
+    def shots_on_goal(self):
         """
-        Returns an ``int`` of the number of points the team allowed during the
-        game.
+        Returns an ``int`` of the total number of shots on goal the team
+        registered.
         """
-        return self._points_against
+        return self._shots_on_goal
 
     @int_property_decorator
-    def wins(self):
+    def penalties_in_minutes(self):
         """
-        Returns an ``int`` of the number of games the team has won so far in
-        the season at the conclusion of the requested game.
+        Returns an ``int`` of the total number of minutes the team served for
+        penalties.
         """
-        return self._wins
+        return self._penalties_in_minutes
 
     @int_property_decorator
-    def losses(self):
+    def power_play_goals(self):
         """
-        Returns an ``int`` of the number of games the team has lost so far in
-        the season at the conclusion of the requested game.
+        Returns an ``int`` of the number of power play goals the team scored.
         """
-        return self._losses
+        return self._power_play_goals
 
-    @property
-    def streak(self):
+    @int_property_decorator
+    def power_play_opportunities(self):
         """
-        Returns a ``string`` of the team's winning streak at the conclusion of
-        the requested game. Streaks are listed in the format '[W|L] #' (ie.
-        'W 3' for a 3-game winning streak and 'L 2' for a 2-game losing
-        streak).
+        Returns an ``int`` of the number of power play opportunities the team
+        had.
         """
-        return self._streak
+        return self._power_play_opportunities
+
+    @int_property_decorator
+    def short_handed_goals(self):
+        """
+        Returns an ``int`` of the number of shorthanded goals the team scored.
+        """
+        return self._short_handed_goals
+
+    @int_property_decorator
+    def opp_shots_on_goal(self):
+        """
+        Returns an ``int`` of the total number of shots on goal the opponent
+        registered.
+        """
+        return self._opp_shots_on_goal
+
+    @int_property_decorator
+    def opp_penalties_in_minutes(self):
+        """
+        Returns an ``int`` of the total number of minutes the opponent served
+        for penalties.
+        """
+        return self._opp_penalties_in_minutes
+
+    @int_property_decorator
+    def opp_power_play_goals(self):
+        """
+        Returns an ``int`` of the number of power play goals the opponent
+        scored.
+        """
+        return self._opp_power_play_goals
+
+    @int_property_decorator
+    def opp_power_play_opportunities(self):
+        """
+        Returns an ``int`` of the number of power play opportunities the
+        opponent had.
+        """
+        return self._opp_power_play_opportunities
+
+    @int_property_decorator
+    def opp_short_handed_goals(self):
+        """
+        Returns an ``int`` of the number of shorthanded goals the opponent
+        scored.
+        """
+        return self._opp_short_handed_goals
+
+    @int_property_decorator
+    def corsi_for(self):
+        """
+        Returns an ``int`` of the Corsi For at Even Strength metric which
+        equals the number of shots + blocks + misses.
+        """
+        return self._corsi_for
+
+    @int_property_decorator
+    def corsi_against(self):
+        """
+        Returns an ``int`` of the Corsi Against at Even Strength metric which
+        equals the number of shots + blocks + misses by the opponent.
+        """
+        return self._corsi_against
+
+    @float_property_decorator
+    def corsi_for_percentage(self):
+        """
+        Returns a ``float`` of the percentage of control a team had of the puck
+        which is calculated by the corsi_for value divided by the sum of
+        corsi_for and corsi_against. Values greater than 50.0 indicate the team
+        had more control of the puck than their opponent. Percentage ranges
+        from 0-100.
+        """
+        return self._corsi_for_percentage
+
+    @int_property_decorator
+    def fenwick_for(self):
+        """
+        Returns an ``int`` of the Fenwick For at Even Strength metric which
+        equals the number of shots + misses.
+        """
+        return self._fenwick_for
+
+    @int_property_decorator
+    def fenwick_against(self):
+        """
+        Returns an ``int`` of the Fenwick Against at Even Strength metric which
+        equals the number of shots + misses by the opponent.
+        """
+        return self._fenwick_against
+
+    @float_property_decorator
+    def fenwick_for_percentage(self):
+        """
+        Returns a ``float`` of the percentage of control a team had of the puck
+        which is calculated by the fenwick_for value divided by the sum of
+        fenwick_for and fenwick_against. Values greater than 50.0 indicate the
+        team had more control of the puck than their opponent. Percentage
+        ranges from 0-100.
+        """
+        return self._fenwick_for_percentage
+
+    @int_property_decorator
+    def faceoff_wins(self):
+        """
+        Returns an ``int`` of the number of faceoffs the team won at even
+        strength.
+        """
+        return self._faceoff_wins
+
+    @int_property_decorator
+    def faceoff_losses(self):
+        """
+        Returns an ``int`` of the number of faceoffs the team lost at even
+        strength.
+        """
+        return self._faceoff_losses
+
+    @float_property_decorator
+    def faceoff_win_percentage(self):
+        """
+        Returns a ``float`` of percentage of faceoffs the team won while at
+        even strength. Percentage ranges from 0-100.
+        """
+        return self._faceoff_win_percentage
+
+    @float_property_decorator
+    def offensive_zone_start_percentage(self):
+        """
+        Returns a ``float`` of the percentage of stats that took place in the
+        offensive half. Value is calculated by the number of offensive zone
+        starts divided by the sum of offensive zone starts and defensive zone
+        starts. Percentage ranges from 0-100.
+        """
+        return self._offensive_zone_start_percentage
+
+    @float_property_decorator
+    def pdo(self):
+        """
+        Returns a ``float`` of the team's PDO at Even Strength metric which is
+        calculated by the sum of the shooting percentage and save percentage.
+        Percentage ranges from 0-100.
+        """
+        return self._pdo
 
 
 class Schedule:
@@ -355,8 +495,7 @@ class Schedule:
     Parameters
     ----------
     abbreviation : string
-        A team's short name, such as 'MICHIGAN' for the Michigan
-        Wolverines.
+        A team's short name, such as 'NYR' for the New York Rangers.
     year : string (optional)
         The requested year to pull stats from.
     """
@@ -452,30 +591,30 @@ class Schedule:
         Parameters
         ----------
         abbreviation : string
-            A team's short name, such as 'MICHIGAN' for the Michigan
-            Wolverines.
+            A team's short name, such as 'NYR' for the New York Rangers.
         year : string
             The requested year to pull stats from.
         """
         if not year:
-            year = utils._find_year_for_season('ncaaf')
+            year = utils._find_year_for_season('nhl')
             # If stats for the requested season do not exist yet (as is the
             # case right before a new season begins), attempt to pull the
             # previous year's stats. If it exists, use the previous year
             # instead.
-            if not utils._url_exists(SCHEDULE_URL % (abbreviation.lower(),
-                                                     year)) and \
-               utils._url_exists(SCHEDULE_URL % (abbreviation.lower(),
+            if not utils._url_exists(SCHEDULE_URL % (abbreviation, year)) and \
+               utils._url_exists(SCHEDULE_URL % (abbreviation,
                                                  str(int(year) - 1))):
                 year = str(int(year) - 1)
-        doc = pq(url=SCHEDULE_URL % (abbreviation.lower(), year))
-        schedule = utils._get_stats_table(doc, 'table#schedule')
+        doc = pq(url=SCHEDULE_URL % (abbreviation, year))
+        schedule = utils._get_stats_table(doc, 'table#tm_gamelog_rs')
         if not schedule:
             utils._no_data_found()
             return
 
         for item in schedule:
-            game = Game(item)
+            if 'class="thead"' in str(item):
+                continue
+            game = Game(item, year)
             self._games.append(game)
 
     @property

@@ -1,6 +1,6 @@
 from flexmock import flexmock
-from sportsipy.nhl.schedule import Schedule
-from sportsipy.nhl.teams import Team
+from mp_sportsipy.nhl.schedule import Schedule
+from mp_sportsipy.nhl.teams import Team
 
 
 class TestNHLTeams:

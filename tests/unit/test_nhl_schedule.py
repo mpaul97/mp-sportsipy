@@ -1,14 +1,14 @@
 from flexmock import flexmock
 from mock import PropertyMock
-from sportsipy.constants import (AWAY,
+from mp_sportsipy.constants import (AWAY,
                                  HOME,
                                  LOSS,
                                  NEUTRAL,
                                  POST_SEASON,
                                  REGULAR_SEASON,
                                  WIN)
-from sportsipy.nhl.constants import OVERTIME_LOSS, SHOOTOUT
-from sportsipy.nhl.schedule import Game, Schedule
+from mp_sportsipy.nhl.constants import OVERTIME_LOSS, SHOOTOUT
+from mp_sportsipy.nhl.schedule import Game, Schedule
 
 
 YEAR = 2017

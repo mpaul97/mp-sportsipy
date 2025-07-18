@@ -1,10 +1,10 @@
 from flexmock import flexmock
 from mock import patch, PropertyMock
 from pyquery import PyQuery as pq
-from sportsipy import utils
-from sportsipy.constants import AWAY, HOME
-from sportsipy.mlb.boxscore import Boxscore, Boxscores
-from sportsipy.mlb.constants import DAY, NIGHT
+from mp_sportsipy import utils
+from mp_sportsipy.constants import AWAY, HOME
+from mp_sportsipy.mlb.boxscore import Boxscore, Boxscores
+from mp_sportsipy.mlb.constants import DAY, NIGHT
 from urllib.error import HTTPError
 
 

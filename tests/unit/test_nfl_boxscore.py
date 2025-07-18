@@ -3,9 +3,9 @@ from flexmock import flexmock
 from mock import patch, PropertyMock
 from pyquery import PyQuery as pq
 from os.path import dirname, join
-from sportsipy import utils
-from sportsipy.constants import AWAY, HOME
-from sportsipy.nfl.boxscore import Boxscore, Boxscores
+from mp_sportsipy import utils
+from mp_sportsipy.constants import AWAY, HOME
+from mp_sportsipy.nfl.boxscore import Boxscore, Boxscores
 
 
 class MockName:

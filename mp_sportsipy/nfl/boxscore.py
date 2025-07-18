@@ -15,7 +15,8 @@ from .player import (AbstractPlayer,
                      _float_property_decorator,
                      _int_property_decorator)
 from functools import wraps
-
+import logging
+import traceback
 
 def nfl_int_property_sub_index(func):
     # Decorator dedicated to properties with sub-indices, such as pass yards
@@ -325,12 +326,13 @@ class Boxscore:
         Returns
         -------
         PyQuery object
-            The requested page is returned as a queriable PyQuery object with
+            The requested page is returned as a queryable PyQuery object with
             the comment tags removed.
         """
         url = BOXSCORE_URL % uri
         try:
-            url_data = pq(url=url)
+            # url_data = pq(url=url)
+            url_data = pq(utils.get_page_source(url))
         except (HTTPError, AttributeError):
             return None
         # For NFL, a 404 page doesn't actually raise a 404 error, so it needs
@@ -729,6 +731,7 @@ class Boxscore:
         for column in game_info('th').items():
             if column.text():
                 abbreviations.append(column.text())
+        logging.info(f"Found alt_abbreviations: {abbreviations}")
         if not abbreviations:
             return None, None
         return abbreviations
@@ -751,7 +754,11 @@ class Boxscore:
             The relative link to the boxscore HTML page, such as
             '201802040nwe'.
         """
-        boxscore = self._retrieve_html_page(uri)
+        url = BOXSCORE_URL % uri
+        try:
+            boxscore = pq(utils.get_page_source(url))
+        except:
+            logging.error(f"Error getting page source: {url}, {traceback.format_exc()}")
         # If the boxscore is None, the game likely hasn't been played yet and
         # no information can be gathered. As there is nothing to grab, the
         # class instance should just be empty.

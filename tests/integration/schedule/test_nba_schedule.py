@@ -4,11 +4,11 @@ import pandas as pd
 import pytest
 from datetime import datetime
 from flexmock import flexmock
-from sportsipy import utils
-from sportsipy.constants import AWAY, WIN
-from sportsipy.nba.boxscore import Boxscore
-from sportsipy.nba.constants import SCHEDULE_URL
-from sportsipy.nba.schedule import Schedule
+from mp_sportsipy import utils
+from mp_sportsipy.constants import AWAY, WIN
+from mp_sportsipy.nba.boxscore import Boxscore
+from mp_sportsipy.nba.constants import SCHEDULE_URL
+from mp_sportsipy.nba.schedule import Schedule
 
 
 MONTH = 1

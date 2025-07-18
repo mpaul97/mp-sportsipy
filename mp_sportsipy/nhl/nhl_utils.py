@@ -1,5 +1,5 @@
 from pyquery import PyQuery as pq
-from sportsipy import utils
+from mp_sportsipy import utils
 from .constants import SEASON_PAGE_URL
 
 

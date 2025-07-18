@@ -5,9 +5,9 @@ from flexmock import flexmock
 from mock import patch
 from os import path
 from pyquery import PyQuery as pq
-from sportsipy import utils
-from sportsipy.constants import AWAY, DRAW
-from sportsipy.fb.schedule import Schedule
+from mp_sportsipy import utils
+from mp_sportsipy.constants import AWAY, DRAW
+from mp_sportsipy.fb.schedule import Schedule
 
 
 NUM_GAMES_IN_SCHEDULE = 52

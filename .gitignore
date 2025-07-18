@@ -4,6 +4,7 @@
 # Test files
 *cache*
 *coverage*
+nfl_boxscore_template.html
 
 # Building files
 build*

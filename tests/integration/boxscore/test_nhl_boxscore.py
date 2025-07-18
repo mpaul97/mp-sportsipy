@@ -3,10 +3,10 @@ import os
 import pandas as pd
 from datetime import datetime
 from flexmock import flexmock
-from sportsipy import utils
-from sportsipy.constants import AWAY
-from sportsipy.nhl.constants import BOXSCORE_URL, BOXSCORES_URL
-from sportsipy.nhl.boxscore import Boxscore, Boxscores
+from mp_sportsipy import utils
+from mp_sportsipy.constants import AWAY
+from mp_sportsipy.nhl.constants import BOXSCORE_URL, BOXSCORES_URL
+from mp_sportsipy.nhl.boxscore import Boxscore, Boxscores
 
 
 MONTH = 10

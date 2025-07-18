@@ -3,7 +3,9 @@ import requests
 from datetime import datetime
 from lxml.etree import ParserError, XMLSyntaxError
 from pyquery import PyQuery as pq
-
+import logging
+from playwright.sync_api import sync_playwright
+import time
 
 # {
 #   league name: {
@@ -335,3 +337,29 @@ def _no_data_found():
           'found. Has the season begun, and is the data available on '
           'www.sports-reference.com?')
     return
+
+def get_page_source(url: str):
+    with sync_playwright() as p:
+        # Launch browser in headfull mode for debugging (can switch to headless later)
+        browser = p.chromium.launch(
+            headless=True,
+            args=['--no-sandbox', '--disable-setuid-sandbox', '--disable-gpu']
+        )
+        page = browser.new_page()
+        try:
+            # Set longer default timeout and navigate to URL
+            page.set_default_timeout(60000)
+            page.goto(url)
+            # Wait for main content to load - adjust selector as needed
+            page.wait_for_selector('.box', state='attached', timeout=45000)
+            # Optional: Wait for additional time if needed
+            time.sleep(2)
+            # Get page content and parse with BeautifulSoup
+            html = page.content()
+            logging.info(f"Page content successfully retrieved! URL: {url}")
+            return html
+        except Exception as e:
+            logging.error(f"Error occurred: {str(e)}")
+            return None
+        finally:
+            browser.close()

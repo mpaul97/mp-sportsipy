@@ -3,7 +3,7 @@ import pandas as pd
 from flexmock import flexmock
 from os import path
 from pyquery import PyQuery as pq
-from sportsipy.fb.roster import Roster
+from mp_sportsipy.fb.roster import Roster
 
 
 EXPECTED_NUM_PLAYERS = 34

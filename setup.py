@@ -7,7 +7,7 @@ with open('VERSION', 'r') as f:
     version = f.read()
 
 setup(
-    name='sportsipy',
+    name='mp-sportsipy',
     version=version,
     author='Robert Clark',
     author_email='robdclark@outlook.com',
@@ -22,7 +22,8 @@ setup(
         "numpy >= 1.19.5",
         "pandas >= 0.24.1",
         "pyquery >= 1.4.0",
-        "requests >= 2.18.4"
+        "requests >= 2.18.4",
+        "playwright >= 1.52.0"
     ],
     classifiers=(
         'Programming Language :: Python :: 3.7',

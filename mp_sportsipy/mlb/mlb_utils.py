@@ -1,7 +1,6 @@
-from .constants import PARSING_SCHEME, SEASON_PAGE_URL
+from .constants import PARSING_SCHEME, STANDINGS_URL, TEAM_STATS_URL
 from pyquery import PyQuery as pq
-from sportsipy import utils
-from urllib.error import HTTPError
+from mp_sportsipy import utils
 
 
 def _add_stats_data(teams_list, team_data_dict):
@@ -30,23 +29,23 @@ def _add_stats_data(teams_list, team_data_dict):
     # Teams are listed in terms of rank with the first team being #1
     rank = 1
     for team_data in teams_list:
-        # Only try to pull data from the row if there's a team link, otherwise it
-        # might be an embedded header row, like in the division standings
-        if team_data('a').attr('href') is not None:
-            abbr = utils._parse_field(PARSING_SCHEME, team_data, 'abbreviation')
-            try:
-                team_data_dict[abbr]['data'] += team_data
-            except KeyError:
-                team_data_dict[abbr] = {'data': team_data, 'rank': rank}
-            rank += 1
+        # Skip the league average row
+        if 'class="league_average_table"' in str(team_data):
+            continue
+        abbr = utils._parse_field(PARSING_SCHEME, team_data, 'abbreviation')
+        try:
+            team_data_dict[abbr]['data'] += team_data
+        except KeyError:
+            team_data_dict[abbr] = {'data': team_data, 'rank': rank}
+        rank += 1
     return team_data_dict
 
 
-def _retrieve_all_teams(year, season_file=None):
+def _retrieve_all_teams(year, standings_file=None, teams_file=None):
     """
     Find and create Team instances for all teams in the given season.
 
-    For a given season, parses the specified NBA stats table and finds all
+    For a given season, parses the specified MLB stats table and finds all
     requested stats. Each team then has a Team instance created which includes
     all requested stats and a few identifiers, such as the team's name and
     abbreviation. All of the individual Team instances are added to a list.
@@ -55,8 +54,10 @@ def _retrieve_all_teams(year, season_file=None):
     ----------
     year : string
         The requested year to pull stats from.
-    season_file : string (optional)
-        Link with filename to the local season page.
+    standings_file : string (optional)
+        Link with filename to the local standings page.
+    teams_file : string (optional)
+        Link with filename to the local teams page.
 
     Returns
     -------
@@ -68,33 +69,23 @@ def _retrieve_all_teams(year, season_file=None):
     team_data_dict = {}
 
     if not year:
-        year = utils._find_year_for_season('nba')
-        # Given the delays to the NBA season in 2020, the default season
-        # selection logic is no longer valid after the original season should
-        # have concluded. In this case, the previous season should be pulled
-        # instead.
-        if year == 2021:
-            try:
-                doc = pq(url=SEASON_PAGE_URL % year)
-            except HTTPError:
-                year = str(int(year) - 1)
+        year = utils._find_year_for_season('mlb')
         # If stats for the requested season do not exist yet (as is the case
         # right before a new season begins), attempt to pull the previous
         # year's stats. If it exists, use the previous year instead.
-        if not utils._url_exists(SEASON_PAGE_URL % year) and \
-           utils._url_exists(SEASON_PAGE_URL % str(int(year) - 1)):
+        if not utils._url_exists(STANDINGS_URL % year) and \
+           utils._url_exists(STANDINGS_URL % str(int(year) - 1)):
             year = str(int(year) - 1)
-    doc = utils._pull_page(SEASON_PAGE_URL % year, season_file)
-    teams_list = utils._get_stats_table(doc, 'div#div_totals-team')
-    opp_teams_list = utils._get_stats_table(doc, 'div#div_totals-opponent')
-    # Team wins, losses, and win % are in separate tables, and older years
-    # do not have a conference standings table
-    standings_list_E = utils._get_stats_table(doc, 'div#div_divs_standings_E')
-    standings_list_W = utils._get_stats_table(doc, 'div#div_divs_standings_W')
-
-    if not teams_list and not opp_teams_list and not standings_list_E and not standings_list_W:
+    doc = utils._pull_page(STANDINGS_URL % year, standings_file)
+    div_prefix = 'div#all_expanded_standings_overall'
+    standings = utils._get_stats_table(doc, div_prefix)
+    doc = utils._pull_page(TEAM_STATS_URL % year, teams_file)
+    div_prefix = 'div#all_teams_standard_%s'
+    batting_stats = utils._get_stats_table(doc, div_prefix % 'batting')
+    pitching_stats = utils._get_stats_table(doc, div_prefix % 'pitching')
+    if not standings and not batting_stats and not pitching_stats:
         utils._no_data_found()
         return None, None
-    for stats_list in [teams_list, opp_teams_list, standings_list_E, standings_list_W]:
+    for stats_list in [standings, batting_stats, pitching_stats]:
         team_data_dict = _add_stats_data(stats_list, team_data_dict)
     return team_data_dict, year
