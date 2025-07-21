@@ -224,7 +224,7 @@ class Boxscore:
         The relative link to the boxscore HTML page, such as
         '201802040nwe'.
     """
-    def __init__(self, uri):
+    def __init__(self, uri, page_source = None):
         self._uri = uri
         self._date = None
         self._time = None
@@ -294,7 +294,22 @@ class Boxscore:
         self._home_fourth_down_attempts = None
         self._home_time_of_possession = None
 
+        self._page_source = page_source
+
+        self._set_page_source(uri)
         self._parse_game_data(uri)
+
+    def _set_page_source(self, uri):
+        """
+        Set page source from utils Playwright method if None
+        """
+        if self._page_source is None:
+            url = BOXSCORE_URL % uri
+            try:
+                self._page_source = utils.get_page_source(url)
+            except:
+                logging.error(f"Error getting page source: {url}, {traceback.format_exc()}")
+        return
 
     def __str__(self):
         """
@@ -754,11 +769,7 @@ class Boxscore:
             The relative link to the boxscore HTML page, such as
             '201802040nwe'.
         """
-        url = BOXSCORE_URL % uri
-        try:
-            boxscore = pq(utils.get_page_source(url))
-        except:
-            logging.error(f"Error getting page source: {url}, {traceback.format_exc()}")
+        boxscore = pq(self._page_source)
         # If the boxscore is None, the game likely hasn't been played yet and
         # no information can be gathered. As there is nothing to grab, the
         # class instance should just be empty.
