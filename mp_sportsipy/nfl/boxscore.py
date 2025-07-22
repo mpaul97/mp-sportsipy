@@ -94,6 +94,8 @@ class BoxscorePlayer(AbstractPlayer):
         properties and values for the specified game.
         """
         fields_to_include = {
+            'pid': self.player_id,
+            'player_name': self.name,
             'completed_passes': self.completed_passes,
             'attempted_passes': self.attempted_passes,
             'passing_yards': self.passing_yards,
@@ -830,6 +832,9 @@ class Boxscore:
             if points is None or points == '':
                 return None
         fields_to_include = {
+            'key': self._uri,
+            'home_abbr': self._home_abbr,
+            'away_abbr': self._away_abbr,
             'attendance': self.attendance,
             'away_first_downs': self.away_first_downs,
             'away_fourth_down_attempts': self.away_fourth_down_attempts,
