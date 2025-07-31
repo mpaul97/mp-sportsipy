@@ -209,7 +209,8 @@ def _parse_field(parsing_scheme, html_data, field, index=0, strip=False,
     try:
         scheme = parsing_scheme[field]
     except KeyError:
-        logging.error(f"Key not found in parsing scheme, in utils._parse_field: {field}")
+        if field != 'page_source':
+            logging.error(f"Key not found in parsing scheme, in utils._parse_field: {field}")
         return None
     if strip:
         items = [i.text() for i in html_data(scheme).items() if i.text()]

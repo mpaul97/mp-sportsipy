@@ -748,7 +748,7 @@ class Boxscore:
         for column in game_info('th').items():
             if column.text():
                 abbreviations.append(column.text())
-        logging.info(f"Found alt_abbreviations: {abbreviations}")
+        logging.debug(f"Found alt_abbreviations: {abbreviations}")
         if not abbreviations:
             return None, None
         return abbreviations
