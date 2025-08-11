@@ -150,7 +150,11 @@ def _parse_abbreviation(uri_link):
     string
         The shortened uppercase abbreviation for a given team.
     """
-    abbr = re.sub(r'/[0-9]+\..*htm.*', '', uri_link('a').attr('href'))
+    try:
+        abbr = re.sub(r'/[0-9]+\..*htm.*', '', uri_link('a').attr('href'))
+    except TypeError:
+        logging.error(f"_parse_abbreviation error for url_link: {uri_link('a').attr('href')}")
+        return None
     abbr = re.sub(r'/.*/schools/', '', abbr)
     abbr = re.sub(r'/teams/', '', abbr)
     return abbr.upper()
@@ -324,7 +328,7 @@ def _pull_page(url=None, local_file=None):
         with open(local_file, 'r', encoding='utf8') as filehandle:
             return pq(filehandle.read())
     if url:
-        return pq(url=url)
+        return pq(get_page_source(url))
     raise ValueError('Expected either a URL or a local data file!')
 
 
