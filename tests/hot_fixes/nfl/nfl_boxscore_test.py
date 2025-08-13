@@ -11,6 +11,9 @@ from playwright.sync_api import sync_playwright
 from functools import wraps
 import pandas as pd
 from datetime import datetime
+from nfl_player import (AbstractPlayer,
+                     _float_property_decorator,
+                     _int_property_decorator)
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -25,6 +28,178 @@ REGULAR_SEASON = 'Reg'
 POST_SEASON = 'Post'
 CONFERENCE_TOURNAMENT = 'Conf-Tourney'
 NON_DI = 'Non-DI School'
+
+class BoxscorePlayer(AbstractPlayer):
+    """
+    Get player stats for an individual game.
+
+    Given a player ID, such as 'BreeDr01' for Drew Brees, their full name, and
+    all associated stats from the Boxscore page in HTML format, parse the HTML
+    and extract only the relevant stats for the specified player and assign
+    them to readable properties.
+
+    This class inherits the ``AbstractPlayer`` class. As a result, all
+    properties associated with ``AbstractPlayer`` can also be read directly
+    from this class.
+
+    As this class is instantiated from within the Boxscore class, it should not
+    be called directly and should instead be queried using the appropriate
+    players properties from the Boxscore class.
+
+    Parameters
+    ----------
+    player_id : string
+        A player's ID according to pro-football-reference.com, such as
+        'BreeDr00' for Drew Brees. The player ID can be found by navigating to
+        the player's stats page and getting the string between the final slash
+        and the '.htm' in the URL. In general, the ID is in the format
+        'LlllFfNN' where 'Llll' are the first 4 letters in the player's last
+        name with the first letter capitalized, 'Ff' are the first 2 letters in
+        the player's first name where the first letter is capitalized, and 'NN'
+        is a number starting at '00' for the first time that player ID has been
+        used and increments by 1 for every successive player.
+    player_name : string
+        A string representing the player's first and last name, such as 'David
+        Blough'.
+    player_data : string
+        A string representation of the player's HTML data from the Boxscore
+        page. If the player appears in multiple tables, all of their
+        information will appear in one single string concatenated together.
+    """
+    def __init__(self, player_id, player_name, player_data):
+        self._index = 0
+        self._yards_lost_from_sacks = None
+        self._fumbles_lost = None
+        self._combined_tackles = None
+        self._solo_tackles = None
+        self._tackles_for_loss = None
+        self._quarterback_hits = None
+        self._average_kickoff_return_yards = None
+        AbstractPlayer.__init__(self, player_id, player_name, player_data)
+
+    @property
+    def dataframe(self):
+        """
+        Returns a ``pandas DataFrame`` containing all other relevant class
+        properties and values for the specified game.
+        """
+        fields_to_include = {
+            'pid': self.player_id,
+            'player_name': self.name,
+            'completed_passes': self.completed_passes,
+            'attempted_passes': self.attempted_passes,
+            'passing_yards': self.passing_yards,
+            'passing_touchdowns': self.passing_touchdowns,
+            'interceptions_thrown': self.interceptions_thrown,
+            'times_sacked': self.times_sacked,
+            'yards_lost_from_sacks': self.yards_lost_from_sacks,
+            'longest_pass': self.longest_pass,
+            'quarterback_rating': self.quarterback_rating,
+            'rush_attempts': self.rush_attempts,
+            'rush_yards': self.rush_yards,
+            'rush_touchdowns': self.rush_touchdowns,
+            'longest_rush': self.longest_rush,
+            'times_pass_target': self.times_pass_target,
+            'receptions': self.receptions,
+            'receiving_yards': self.receiving_yards,
+            'receiving_touchdowns': self.receiving_touchdowns,
+            'longest_reception': self.longest_reception,
+            'fumbles': self.fumbles,
+            'fumbles_lost': self.fumbles_lost,
+            'interceptions': self.interceptions,
+            'yards_returned_from_interception':
+            self.yards_returned_from_interception,
+            'interceptions_returned_for_touchdown':
+            self.interceptions_returned_for_touchdown,
+            'longest_interception_return': self.longest_interception_return,
+            'passes_defended': self.passes_defended,
+            'sacks': self.sacks,
+            'combined_tackles': self.combined_tackles,
+            'solo_tackles': self.solo_tackles,
+            'assists_on_tackles': self.assists_on_tackles,
+            'tackles_for_loss': self.tackles_for_loss,
+            'quarterback_hits': self.quarterback_hits,
+            'fumbles_recovered': self.fumbles_recovered,
+            'yards_recovered_from_fumble': self.yards_recovered_from_fumble,
+            'fumbles_recovered_for_touchdown':
+            self.fumbles_recovered_for_touchdown,
+            'fumbles_forced': self.fumbles_forced,
+            'kickoff_returns': self.kickoff_returns,
+            'kickoff_return_yards': self.kickoff_return_yards,
+            'average_kickoff_return_yards': self.average_kickoff_return_yards,
+            'kickoff_return_touchdown': self.kickoff_return_touchdown,
+            'longest_kickoff_return': self.longest_kickoff_return,
+            'punt_returns': self.punt_returns,
+            'punt_return_yards': self.punt_return_yards,
+            'yards_per_punt_return': self.yards_per_punt_return,
+            'punt_return_touchdown': self.punt_return_touchdown,
+            'longest_punt_return': self.longest_punt_return,
+            'extra_points_made': self.extra_points_made,
+            'extra_points_attempted': self.extra_points_attempted,
+            'field_goals_made': self.field_goals_made,
+            'field_goals_attempted': self.field_goals_attempted,
+            'punts': self.punts,
+            'total_punt_yards': self.total_punt_yards,
+            'yards_per_punt': self.yards_per_punt,
+            'longest_punt': self.longest_punt
+        }
+        return pd.DataFrame([fields_to_include], index=[self._player_id])
+
+    @_int_property_decorator
+    def yards_lost_from_sacks(self):
+        """
+        Returns an ``int`` of the total number of yards the player lost after
+        being sacked by the opponent.
+        """
+        return self._yards_lost_from_sacks
+
+    @_int_property_decorator
+    def fumbles_lost(self):
+        """
+        Returns an ``int`` of the number of times the player fumbled the ball
+        and the opponent recovered the ball.
+        """
+        return self._fumbles_lost
+
+    @_int_property_decorator
+    def combined_tackles(self):
+        """
+        Returns an ``int`` of the number of solo and assisted tackles the
+        player made.
+        """
+        return self._combined_tackles
+
+    @_int_property_decorator
+    def solo_tackles(self):
+        """
+        Returns an ``int`` of the number of solo tackles the player made during
+        the game.
+        """
+        return self._solo_tackles
+
+    @_int_property_decorator
+    def tackles_for_loss(self):
+        """
+        Returns an ``int`` of the number of times the player tackles an
+        opponent for a loss on the play.
+        """
+        return self._tackles_for_loss
+
+    @_int_property_decorator
+    def quarterback_hits(self):
+        """
+        Returns an ``int`` of the number of times the player hit the
+        quarterback.
+        """
+        return self._quarterback_hits
+
+    @_float_property_decorator
+    def average_kickoff_return_yards(self):
+        """
+        Returns a ``float`` of the average number of yards the player returned
+        a kickoff for.
+        """
+        return self._average_kickoff_return_yards
 
 def int_property_decorator(func):
     @property
@@ -43,7 +218,6 @@ def int_property_decorator(func):
             # on their use-case.
             return None
     return wrapper
-
 
 def float_property_decorator(func):
     @property
@@ -629,14 +803,14 @@ class Boxscore:
         """
         home_players = []
         away_players = []
-        # for player_id, details in player_dict.items():
-        #     player = BoxscorePlayer(player_id,
-        #                             details['name'],
-        #                             details['data'])
-        #     if details['team'] == HOME:
-        #         home_players.append(player)
-        #     else:
-        #         away_players.append(player)
+        for player_id, details in player_dict.items():
+            player = BoxscorePlayer(player_id,
+                                    details['name'],
+                                    details['data'])
+            if details['team'] == HOME:
+                home_players.append(player)
+            else:
+                away_players.append(player)
         return away_players, home_players
 
     def _find_players(self, boxscore):
@@ -661,7 +835,6 @@ class Boxscore:
             home teams, respectively.
         """
         player_dict = {}
-
         tables = self._find_boxscore_tables(boxscore)
         for table in tables:
             player_dict = self._extract_player_stats(table, player_dict)
@@ -695,7 +868,6 @@ class Boxscore:
         for column in game_info('th').items():
             if column.text():
                 abbreviations.append(column.text())
-        print(abbreviations)
         if not abbreviations:
             return None, None
         return abbreviations
@@ -1408,4 +1580,5 @@ class Boxscore:
 
 if __name__ == "__main__":
     boxscore = Boxscore("202502090phi")
-    boxscore.dataframe.to_csv("test_boxscores.csv", index=False)
+    print(boxscore.home_players[0].dataframe)
+    # boxscore.dataframe.to_csv("test_boxscores.csv", index=False)
