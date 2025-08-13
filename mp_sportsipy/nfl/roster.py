@@ -1747,7 +1747,7 @@ class Roster:
             Returns a PyQuery object of the team's HTML page.
         """
         try:
-            return pq(utils._remove_html_comment_tags(pq(url=url)))
+            return pq(utils._remove_html_comment_tags(pq(utils.get_page_source_alternate(url))))
         except HTTPError:
             return None
 

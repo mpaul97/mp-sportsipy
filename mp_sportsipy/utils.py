@@ -372,3 +372,29 @@ def get_page_source(url: str):
             return None
         finally:
             browser.close()
+
+def get_page_source_alternate(url: str):
+    with sync_playwright() as p:
+        # Launch browser in headfull mode for debugging (can switch to headless later)
+        browser = p.chromium.launch(
+            headless=True,
+            args=['--no-sandbox', '--disable-setuid-sandbox', '--disable-gpu']
+        )
+        page = browser.new_page()
+        try:
+            # Set longer default timeout and navigate to URL
+            page.set_default_timeout(60000)
+            page.goto(url)
+            # Wait for main content to load - adjust selector as needed
+            page.wait_for_selector('#content', state='attached', timeout=45000)
+            # Optional: Wait for additional time if needed
+            time.sleep(2)
+            # Get page content and parse with BeautifulSoup
+            html = page.content()
+            logging.info(f"Page content successfully retrieved! URL: {url}")
+            return html
+        except Exception as e:
+            logging.error(f"Error occurred: {str(e)}")
+            return None
+        finally:
+            browser.close()
